@@ -1,0 +1,53 @@
+const express = require('express');
+const bodyParser = require('body-parser');
+const app = express().use(bodyParser.json()); // creates express http server
+
+app.post('/webhook', (req, res) => {
+  let body = req.body;
+
+  if (body.object === 'page') {
+    body.entry.forEach(entry => {
+      let event = entry.messaging[0];
+      let senderId = event.sender.id;
+
+      if (event.message && event.message.text) {
+        let response = {
+          text: `You said: ${event.message.text}`
+        };
+
+        sendMessage(senderId, response);
+      }
+    });
+
+    res.status(200).send('EVENT_RECEIVED');
+  } else {
+    res.sendStatus(404);
+  }
+});
+
+const sendMessage = (senderId, response) => {
+  const request = require('request');
+  const PAGE_ACCESS_TOKEN = 'YOUR_PAGE_ACCESS_TOKEN';
+
+  let requestBody = {
+    recipient: {
+      id: senderId
+    },
+    message: response
+  };
+
+  request({
+    uri: 'https://graph.facebook.com/v11.0/me/messages',
+    qs: { access_token: PAGE_ACCESS_TOKEN },
+    method: 'POST',
+    json: requestBody
+  }, (err, res, body) => {
+    if (!err) {
+      console.log('Message sent!');
+    } else {
+      console.error('Unable to send message:' + err);
+    }
+  });
+};
+
+app.listen(process.env.PORT || 1337, () => console.log('webhook is listening'));
